@@ -42,7 +42,9 @@ if(UNIX)
   endif()
 
   # Set word size
-  if(${LINK_WORD_SIZE} EQUAL 32)
+  if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
+    message(STATUS "Building for an ARM platform")  
+  elseif(${LINK_WORD_SIZE} EQUAL 32)
     set(build_flags_COMMON_LIST
       ${build_flags_COMMON_LIST}
       "-m32"
