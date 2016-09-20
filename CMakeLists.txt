@@ -16,6 +16,7 @@ option(LINK_BUILD_QT_EXAMPLES "Build examples (Requires Qt)" OFF)
 if(UNIX)
   set(LINK_WORD_SIZE "64" CACHE STRING "Set the word size (must be either 32 or 64)")
   option(LINK_ENABLE_ASAN "Build with Address Sanitizier (ASan)" OFF)
+  option(LINK_BUILD_RTAUDIO "Build example applications with RtAudio backend" ON)
 endif()
 
 if(WIN32)
@@ -68,4 +69,3 @@ if(CMAKE_BUILD_TYPE)
 else()
   message("   Build type: Set by IDE")
 endif()
-

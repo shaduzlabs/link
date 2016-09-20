@@ -42,7 +42,12 @@ endif()
 
 set(linkhut_audio_SOURCES)
 
-if(APPLE)
+if(UNIX AND LINK_BUILD_RTAUDIO)
+  set(linkhut_audio_SOURCES
+    linkaudio/AudioPlatform_RtAudio.hpp
+    linkaudio/AudioPlatform_RtAudio.cpp
+  )
+elseif(APPLE)
   set(linkhut_audio_SOURCES
     linkaudio/AudioPlatform_CoreAudio.hpp
     linkaudio/AudioPlatform_CoreAudio.cpp
@@ -101,14 +106,28 @@ endfunction()
 function(configure_linkhut_audio_sources target)
   if(APPLE)
     target_link_libraries(${target} "-framework AudioUnit")
-    target_compile_definitions(${target} PRIVATE
-      -DLINKHUT_AUDIO_PLATFORM_COREAUDIO=1
-    )
+    if(LINK_BUILD_RTAUDIO)
+      target_link_libraries(${target} rtaudio)
+      target_compile_definitions(${target} PRIVATE
+        -DLINKHUT_AUDIO_PLATFORM_RTAUDIO=1
+      )
+    else()
+      target_compile_definitions(${target} PRIVATE
+        -DLINKHUT_AUDIO_PLATFORM_COREAUDIO=1
+      )
+    endif()
   elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    target_link_libraries(${target} asound portaudio)
-    target_compile_definitions(${target} PRIVATE
-      -DLINKHUT_AUDIO_PLATFORM_PORTAUDIO=1
-    )
+    if(LINK_BUILD_RTAUDIO)
+      target_link_libraries(${target} asound rtaudio)
+      target_compile_definitions(${target} PRIVATE
+        -DLINKHUT_AUDIO_PLATFORM_RTAUDIO=1
+      )
+    else()
+      target_link_libraries(${target} asound portaudio)
+      target_compile_definitions(${target} PRIVATE
+        -DLINKHUT_AUDIO_PLATFORM_PORTAUDIO=1
+      )
+    endif()
   elseif(WIN32)
     if(LINK_BUILD_ASIO)
       # ASIO uses lots of old-school string APIs from the C stdlib

@@ -19,26 +19,43 @@
 
 #pragma once
 
-#if LINKHUT_AUDIO_PLATFORM_ASIO
-#include "AudioPlatform_Asio.hpp"
-#endif
+#include "AudioEngine.hpp"
+#include <RtAudio.h>
+#include <ableton/link/HostTimeFilter.hpp>
 
-#if LINKHUT_AUDIO_PLATFORM_COREAUDIO
-#include "AudioPlatform_CoreAudio.hpp"
-#endif
+namespace ableton
+{
+namespace linkaudio
+{
 
-#if LINKHUT_AUDIO_PLATFORM_DUMMY
-#include "AudioPlatform_Dummy.hpp"
-#endif
+class AudioPlatform
+{
+public:
+  AudioPlatform(Link& link);
+  virtual ~AudioPlatform();
 
-#if LINKHUT_AUDIO_PLATFORM_PORTAUDIO
-#include "AudioPlatform_Portaudio.hpp"
-#endif
+  AudioEngine mEngine;
 
-#if LINKHUT_AUDIO_PLATFORM_RTAUDIO
-#include "AudioPlatform_RtAudio.hpp"
-#endif
+private:
+  static int audioCallback(void* outputBuffer,
+    void* inputBuffer,
+    unsigned int nBufferFrames,
+    double streamTime,
+    RtAudioStreamStatus status,
+    void* userData);
 
-#if LINKHUT_AUDIO_PLATFORM_WASAPI
-#include "AudioPlatform_Wasapi.hpp"
-#endif
+  void initialize();
+  void uninitialize();
+  void start();
+  void stop();
+
+  link::HostTimeFilter<link::platform::Clock> mHostTimeFilter;
+  double mSampleTime;
+
+  RtAudio m_audioDevice;
+  unsigned m_audioBufferSize;
+  RtAudio::StreamParameters m_audioStreamParameters;
+};
+
+} // namespace linkaudio
+} // namespace ableton
