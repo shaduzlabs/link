@@ -34,13 +34,6 @@ namespace
 
 struct MockClock
 {
-  using Ticks = std::int64_t;
-
-  Ticks ticks() const
-  {
-    return 1;
-  }
-
   microseconds micros() const
   {
     return microseconds{1};
@@ -93,6 +86,22 @@ struct MockIoContext
     return {};
   }
 
+  template <typename Callback, typename Duration>
+  struct LockFreeCallbackDispatcher
+  {
+    LockFreeCallbackDispatcher(Callback callback, Duration)
+      : mCallback(std::move(callback))
+    {
+    }
+
+    void invoke()
+    {
+      mCallback();
+    }
+
+    Callback mCallback;
+  };
+
   using Log = util::NullLog;
 
   Log log() const
@@ -116,23 +125,6 @@ struct MockIoContext
   {
     return {};
   }
-
-  template <typename IoContext>
-  struct RealTimeContext
-  {
-    RealTimeContext(util::Injected<IoContext> io)
-      : mIo(std::move(io))
-    {
-    }
-
-    template <typename Handler>
-    void async(Handler handler) const
-    {
-      mIo->async(std::move(handler));
-    }
-
-    util::Injected<IoContext> mIo;
-  };
 };
 
 using MockController =

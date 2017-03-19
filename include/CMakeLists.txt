@@ -11,6 +11,7 @@ project(LinkCore)
 set(link_core_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ableton/link)
 set(link_core_HEADERS
   ${link_core_DIR}/Beats.hpp
+  ${link_core_DIR}/CircularFifo.hpp
   ${link_core_DIR}/ClientSessionTimelines.hpp
   ${link_core_DIR}/Controller.hpp
   ${link_core_DIR}/Gateway.hpp
@@ -73,7 +74,7 @@ set(link_platform_HEADERS
   ${link_platform_DIR}/asio/AsioTimer.hpp
   ${link_platform_DIR}/asio/AsioWrapper.hpp
   ${link_platform_DIR}/asio/Context.hpp
-  ${link_platform_DIR}/asio/PooledHandlerContext.hpp
+  ${link_platform_DIR}/asio/LockFreeCallbackDispatcher.hpp
   ${link_platform_DIR}/asio/Socket.hpp
   ${link_platform_DIR}/asio/Util.hpp
 )

@@ -15,7 +15,6 @@ def parse_args():
 
     arg_parser.add_argument(
         '-a', '--audio-driver',
-        default='Asio',
         help='Audio driver to build (Windows only, default: %(default)s)')
 
     arg_parser.add_argument(
@@ -37,8 +36,8 @@ def parse_args():
         help='CMake generator to use (default: Determined by CMake)')
 
     arg_parser.add_argument(
-        '-w', '--wordsize', type=int, default='64',
-        help='Set word size for build (must be either 32/64, default: %(default)s)')
+        '-f', '--flags',
+        help='Additional CMake flags')
 
     return arg_parser.parse_args(sys.argv[1:])
 
@@ -58,17 +57,22 @@ def build_cmake_args(args):
     if args.with_qt:
         cmake_args.append('-DLINK_BUILD_QT_EXAMPLES=ON')
 
-    if args.wordsize is not None:
-        cmake_args.append('-DLINK_WORD_SIZE=' + str(args.wordsize))
-
     if args.configuration is not None:
         cmake_args.append('-DCMAKE_BUILD_TYPE=' + args.configuration)
+
+    if args.flags is not None:
+        cmake_args.append(args.flags)
 
     if sys.platform == 'win32':
         if args.audio_driver is None or args.audio_driver == 'Asio':
             cmake_args.append('-DLINK_BUILD_ASIO=ON')
         else:
             cmake_args.append('-DLINK_BUILD_ASIO=OFF')
+    elif 'linux' in sys.platform:
+       if args.audio_driver == 'Jack':
+           cmake_args.append('-DLINK_BUILD_JACK=ON')
+
+    print sys.platform
 
     # This must always be last
     cmake_args.append('..')

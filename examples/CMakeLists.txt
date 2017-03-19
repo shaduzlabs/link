@@ -77,10 +77,17 @@ elseif(WIN32)
     )
   endif()
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-  set(linkhut_audio_SOURCES
-    linkaudio/AudioPlatform_Portaudio.hpp
-    linkaudio/AudioPlatform_Portaudio.cpp
-  )
+  if(LINK_BUILD_JACK)
+    set(linkhut_audio_SOURCES
+      linkaudio/AudioPlatform_Jack.hpp
+      linkaudio/AudioPlatform_Jack.cpp
+    )
+  else()
+    set(linkhut_audio_SOURCES
+      linkaudio/AudioPlatform_Portaudio.hpp
+      linkaudio/AudioPlatform_Portaudio.cpp
+    )
+  endif()
 endif()
 
 include_directories(linkaudio)
@@ -95,12 +102,10 @@ source_group("Audio Sources" FILES ${linkhut_audio_SOURCES})
 
 function(configure_linkhut_executable target)
   if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    target_link_libraries(${target} pthread)
+    target_link_libraries(${target} atomic pthread)
   endif()
 
   target_link_libraries(${target} Ableton::Link)
-
-  target_set_word_size(${target})
 endfunction()
 
 function(configure_linkhut_audio_sources target)
@@ -117,7 +122,12 @@ function(configure_linkhut_audio_sources target)
       )
     endif()
   elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    if(LINK_BUILD_RTAUDIO)
+    if(LINK_BUILD_JACK)
+      target_link_libraries(${target} jack)
+      target_compile_definitions(${target} PRIVATE
+        -DLINKHUT_AUDIO_PLATFORM_JACK=1
+      )
+    elseif(LINK_BUILD_RTAUDIO)
       target_link_libraries(${target} asound rtaudio)
       target_compile_definitions(${target} PRIVATE
         -DLINKHUT_AUDIO_PLATFORM_RTAUDIO=1

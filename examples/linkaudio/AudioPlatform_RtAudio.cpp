@@ -64,10 +64,9 @@ int AudioPlatform::audioCallback(void* outputBuffer,
 
   engine.audioCallback(bufferBeginAtOutput, nBufferFrames);
 
-  for (unsigned long i = 0; i < nBufferFrames; ++i)
+  for (unsigned long i = 0; i < nBufferFrames * 2; ++i)
   {
-    buffer[i * 2] = engine.mBuffer[i];
-    buffer[i * 2 + 1] = engine.mBuffer[i];
+    buffer[i] = engine.mBuffer[i];
   }
 
   return 0;
@@ -86,7 +85,7 @@ void AudioPlatform::initialize()
     m_audioStreamParameters.deviceId = m_audioDevice.getDefaultOutputDevice();
     m_audioStreamParameters.nChannels = 2;
     m_audioStreamParameters.firstChannel = 0;
-    m_audioBufferSize = mEngine.mBuffer.size();
+    m_audioBufferSize = mEngine.mBuffer.size() / 2;
 
     RtAudio::DeviceInfo deviceInfo =
       m_audioDevice.getDeviceInfo(m_audioDevice.getDefaultOutputDevice());
