@@ -32,7 +32,7 @@
 #pragma push_macro("ASIO_NO_TYPEID")
 #define ASIO_NO_TYPEID 1
 
-#if LINK_PLATFORM_WINDOWS
+#if defined(LINK_PLATFORM_WINDOWS)
 #pragma push_macro("INCL_EXTRA_HTON_FUNCTIONS")
 #define INCL_EXTRA_HTON_FUNCTIONS 1
 #endif
@@ -42,25 +42,21 @@
 #if __has_warning("-Wcomma")
 #pragma clang diagnostic ignored "-Wcomma"
 #endif
+#if __has_warning("-Wunused-local-typedef")
+#pragma clang diagnostic ignored "-Wunused-local-typedef"
+#endif
 #endif
 
 #if defined(_MSC_VER)
-#pragma warning(push)
-// C4191: 'operator/operation': unsafe conversion from 'type of expression' to
-// 'type required'
-#pragma warning(disable : 4191)
-// C4548: expression before comma has no effect; expected expression with side-effect
-#pragma warning(disable : 4548)
-// C4619: #pragma warning : there is no warning number 'number'
-#pragma warning(disable : 4619)
-// C4675: 'function' : resolved overload was found by argument-dependent lookup
-#pragma warning(disable : 4675)
+#pragma warning(push, 0)
+#pragma warning(disable : 4242)
+#pragma warning(disable : 4702)
 #endif
 
 #include <asio.hpp>
 #include <asio/system_timer.hpp>
 
-#if LINK_PLATFORM_WINDOWS
+#if defined(LINK_PLATFORM_WINDOWS)
 #pragma pop_macro("INCL_EXTRA_HTON_FUNCTIONS")
 #endif
 

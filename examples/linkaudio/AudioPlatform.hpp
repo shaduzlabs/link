@@ -19,34 +19,30 @@
 
 #pragma once
 
-#if LINKHUT_AUDIO_PLATFORM_ASIO
+#if defined(LINKHUT_AUDIO_PLATFORM_ASIO)
 #include "AudioPlatform_Asio.hpp"
 #endif
 
-#if LINKHUT_AUDIO_PLATFORM_COREAUDIO
+#if defined(LINKHUT_AUDIO_PLATFORM_COREAUDIO)
 #include "AudioPlatform_CoreAudio.hpp"
 #endif
 
-#if LINKHUT_AUDIO_PLATFORM_DUMMY
+#if defined(LINKHUT_AUDIO_PLATFORM_DUMMY)
 #include "AudioPlatform_Dummy.hpp"
 #endif
 
-#if LINKHUT_AUDIO_PLATFORM_JACK
+#if defined(LINKHUT_AUDIO_PLATFORM_JACK)
 #include "AudioPlatform_Jack.hpp"
 #endif
 
-#if LINKHUT_AUDIO_PLATFORM_PORTAUDIO
+#if defined(LINKHUT_AUDIO_PLATFORM_PORTAUDIO)
 #include "AudioPlatform_Portaudio.hpp"
 #endif
 
-#if LINKHUT_AUDIO_PLATFORM_RTAUDIO
+#if defined(LINKHUT_AUDIO_PLATFORM_RTAUDIO)
 #include "AudioPlatform_RtAudio.hpp"
 #endif
 
-#if LINKHUT_AUDIO_PLATFORM_WASAPI
+#if defined(LINKHUT_AUDIO_PLATFORM_WASAPI)
 #include "AudioPlatform_Wasapi.hpp"
-#endif
-
-#if LINKHUT_AUDIO_PLATFORM_JACK
-#include "AudioPlatform_Jack.hpp"
 #endif

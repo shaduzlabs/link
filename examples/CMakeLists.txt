@@ -108,6 +108,24 @@ function(configure_linkhut_executable target)
   target_link_libraries(${target} Ableton::Link)
 endfunction()
 
+function(configure_qlinkhut_executable target)
+  configure_linkhut_executable(${target})
+  target_link_libraries(${target} Qt5::Quick)
+
+  if(${CMAKE_CXX_COMPILER_ID} MATCHES Clang)
+    target_compile_options(${target} PRIVATE
+      "-Wno-global-constructors"
+      "-Wno-missing-prototypes"
+      "-Wno-undefined-reinterpret-cast"
+      "-Wno-zero-as-null-pointer-constant"
+      )
+  endif()
+
+  if(MSVC_VERSION VERSION_GREATER 1900)
+    target_compile_options(${target} PRIVATE "/wd4946")
+  endif()
+endfunction()
+
 function(configure_linkhut_audio_sources target)
   if(APPLE)
     target_link_libraries(${target} "-framework AudioUnit")
@@ -160,6 +178,9 @@ if(WIN32)
   # When building LinkHut, additional warnings are generated from third-party frameworks
   set(extra_ignored_warnings_LIST
     "/wd4127" # conditional expression is constant
+    "/wd4242" # 'identifier' : conversion from 'type1' to 'type2', possible loss of data
+    "/wd4619" # #pragma warning : there is no warning number 'number'
+    "/wd4668" # 'symbol' is not defined as a preprocessor macro, replacing with '0' for 'directives'
     "/wd4702" # unreachable code
   )
   if(LINK_BUILD_ASIO)
@@ -167,6 +188,11 @@ if(WIN32)
       ${extra_ignored_warnings_LIST}
       "/wd4267" # 'argument': conversion from '?' to '?', possible loss of data
       "/wd4477" # 'printf': format string '%?' requires an argument of type '?'
+    )
+  else()
+    set(extra_ignored_warnings_LIST
+      ${extra_ignored_warnings_LIST}
+      "/wd4191" # 'operator/operation' : unsafe conversion from 'type of expression' to 'type required'
     )
   endif()
   string(REPLACE ";" " " extra_ignored_warnings "${extra_ignored_warnings_LIST}")
@@ -236,9 +262,9 @@ if(LINK_BUILD_QT_EXAMPLES)
     ${linkhut_audio_SOURCES}
     ${UI_RESOURCES}
   )
-  target_link_libraries(QLinkHut Qt5::Quick)
+
   configure_linkhut_audio_sources(QLinkHut)
-  configure_linkhut_executable(QLinkHut)
+  configure_qlinkhut_executable(QLinkHut)
 
   # A silent version of QLinkHut that uses the Link application context instead of
   # the audio buffer context. It is the same as QLinkHut except that it doesn't
@@ -250,7 +276,6 @@ if(LINK_BUILD_QT_EXAMPLES)
     linkaudio/AudioPlatform_Dummy.hpp
     ${UI_RESOURCES}
   )
-  target_link_libraries(QLinkHutSilent Qt5::Quick)
 
   target_compile_definitions(QLinkHutSilent PRIVATE
     -DLINKHUT_AUDIO_PLATFORM_DUMMY=1
@@ -262,5 +287,5 @@ if(LINK_BUILD_QT_EXAMPLES)
     )
   endif()
 
-  configure_linkhut_executable(QLinkHutSilent)
+  configure_qlinkhut_executable(QLinkHutSilent)
 endif()

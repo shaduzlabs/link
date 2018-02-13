@@ -24,9 +24,12 @@
 #include <chrono>
 #include <iostream>
 #include <thread>
-#if LINK_PLATFORM_UNIX
+#if defined(LINK_PLATFORM_UNIX)
 #include <termios.h>
 #endif
+
+namespace
+{
 
 struct State
 {
@@ -45,17 +48,17 @@ struct State
 
 void disableBufferedInput()
 {
-#if LINK_PLATFORM_UNIX
+#if defined(LINK_PLATFORM_UNIX)
   termios t;
   tcgetattr(STDIN_FILENO, &t);
-  t.c_lflag &= ~ICANON;
+  t.c_lflag &= static_cast<unsigned long>(~ICANON);
   tcsetattr(STDIN_FILENO, TCSANOW, &t);
 #endif
 }
 
 void enableBufferedInput()
 {
-#if LINK_PLATFORM_UNIX
+#if defined(LINK_PLATFORM_UNIX)
   termios t;
   tcgetattr(STDIN_FILENO, &t);
   t.c_lflag |= ICANON;
@@ -108,7 +111,7 @@ void input(State& state)
 {
   char in;
 
-#if LINK_PLATFORM_WINDOWS
+#if defined(LINK_PLATFORM_WINDOWS)
   HANDLE stdinHandle = GetStdHandle(STD_INPUT_HANDLE);
   DWORD numCharsRead;
   INPUT_RECORD inputRecord;
@@ -117,8 +120,8 @@ void input(State& state)
     ReadConsoleInput(stdinHandle, &inputRecord, 1, &numCharsRead);
   } while ((inputRecord.EventType != KEY_EVENT) || inputRecord.Event.KeyEvent.bKeyDown);
   in = inputRecord.Event.KeyEvent.uChar.AsciiChar;
-#elif LINK_PLATFORM_UNIX
-  in = std::cin.get();
+#elif defined(LINK_PLATFORM_UNIX)
+  in = static_cast<char>(std::cin.get());
 #endif
 
   const auto tempo = state.link.captureAppTimeline().tempo();
@@ -156,6 +159,8 @@ void input(State& state)
 
   input(state);
 }
+
+} // anon namespace
 
 int main(int, char**)
 {

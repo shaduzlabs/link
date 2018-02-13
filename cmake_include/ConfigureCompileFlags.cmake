@@ -24,10 +24,17 @@ if(UNIX)
   if(${CMAKE_CXX_COMPILER_ID} MATCHES Clang)
     set(build_flags_COMMON_LIST
       ${build_flags_COMMON_LIST}
+      "-Weverything"
       "-Werror"
+      "-Wno-c++98-compat"
+      "-Wno-c++98-compat-pedantic"
       "-Wno-deprecated"
-      "-Wno-global-constructors"
-      "-Wno-over-aligned"
+      "-Wno-disabled-macro-expansion"
+      "-Wno-exit-time-destructors"
+      "-Wno-padded"
+      "-Wno-reserved-id-macro"
+      "-Wno-unknown-warning-option"
+      "-Wno-unused-member-function"
     )
 
   # GCC-specific flags
@@ -83,7 +90,6 @@ elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
     # Ignored compiler warnings #
     #############################
     "/wd4061" # Enumerator 'identifier' in switch of enum 'enumeration' is not explicitly handled by a case label
-    "/wd4242" # 'Identifier': conversion from 'type1' to 'type2', possible loss of data
     "/wd4265" # 'Class' : class has virtual functions, but destructor is not virtual
     "/wd4350" # Behavior change: 'member1' called instead of 'member2'
     "/wd4355" # 'This' : used in base member initializer list
@@ -95,12 +101,10 @@ elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
     "/wd4514" # 'Function' : unreferenced inline function has been removed
     "/wd4571" # Informational: catch(...) semantics changed since Visual C++ 7.1; structured exceptions (SEH) are no longer caught
     "/wd4610" # 'Class': can never be instantiated - user defined constructor required
-    "/wd4619" # #pragma warning: there is no warning number 'number'
     "/wd4625" # 'Derived class' : copy constructor was implicitly defined as deleted because a base class copy constructor is inaccessible or deleted
     "/wd4626" # 'Derived class' : assignment operator was implicitly defined as deleted because a base class assignment operator is inaccessible or deleted
     "/wd4628" # digraphs not supported with -Ze. Character sequence 'digraph' not interpreted as alternate token for 'char'
     "/wd4640" # 'Instance': construction of local static object is not thread-safe
-    "/wd4668" # 'Symbol' is not defined as a preprocessor macro, replacing with '0' for 'directives'
     "/wd4710" # 'Function': function not inlined
     "/wd4711" # Function 'function' selected for inline expansion
     "/wd4738" # Storing 32-bit float result in memory, possible loss of performance
@@ -116,7 +120,15 @@ elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
       "/wd4868" # Compiler may not enforce left-to-right evaluation order in braced initializer list
       "/wd5026" # Move constructor was implicitly defined as deleted
       "/wd5027" # Move assignment operator was implicitly defined as deleted
-      "/wd5031" # #pragma warning(pop): likely mismatch, popping warning state pushed in different file
+    )
+  endif()
+
+  if(MSVC_VERSION VERSION_GREATER 1900)
+    set(build_flags_COMMON_LIST
+      ${build_flags_COMMON_LIST}
+      "/wd4987" # nonstandard extension used: 'throw (...)'
+      "/wd4774" # 'printf_s' : format string expected in argument 1 is not a string literal
+      "/wd5039" # "pointer or reference to potentially throwing function passed to extern C function under -EHc. Undefined behavior may occur if this function throws an exception."
     )
   endif()
 
