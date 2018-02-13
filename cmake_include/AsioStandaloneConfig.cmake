@@ -1,6 +1,9 @@
 add_library(AsioStandalone::AsioStandalone IMPORTED INTERFACE)
 
-find_path(ASIO_STANDALONE_INCLUDE_DIR asio.hpp)
+
+if(NOT ASIO_STANDALONE_INCLUDE_DIR)
+  find_path(ASIO_STANDALONE_INCLUDE_DIR asio.hpp)
+endif()
 
 if(ASIO_STANDALONE_INCLUDE_DIR)
   set_property(TARGET AsioStandalone::AsioStandalone APPEND PROPERTY
