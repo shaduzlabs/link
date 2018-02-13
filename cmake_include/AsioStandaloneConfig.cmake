@@ -1,5 +1,19 @@
 add_library(AsioStandalone::AsioStandalone IMPORTED INTERFACE)
 
+find_path(ASIO_STANDALONE_INCLUDE_DIR asio.hpp)
+
+if(ASIO_STANDALONE_INCLUDE_DIR)
+  set_property(TARGET AsioStandalone::AsioStandalone APPEND PROPERTY
+    INTERFACE_INCLUDE_DIRECTORIES
+    ${ASIO_STANDALONE_INCLUDE_DIR}
+  )
+else()
+  set_property(TARGET AsioStandalone::AsioStandalone APPEND PROPERTY
+    INTERFACE_INCLUDE_DIRECTORIES
+    ${CMAKE_CURRENT_LIST_DIR}/../modules/asio-standalone/asio/include
+  )
+endif()
+
 set_property(TARGET AsioStandalone::AsioStandalone APPEND PROPERTY
   INTERFACE_INCLUDE_DIRECTORIES
   ${CMAKE_CURRENT_LIST_DIR}/../modules/asio-standalone/asio/include
