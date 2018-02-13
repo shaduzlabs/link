@@ -63,11 +63,9 @@ private:
   double mSampleRate;
   std::chrono::microseconds mOutputLatency;
   std::vector<double> mBuffer;
-  double mLastPhase;
   EngineData mSharedEngineData;
   EngineData mLockfreeEngineData;
   std::chrono::microseconds mTimeAtLastClick;
-  std::chrono::microseconds mTimeAtLastReset;
   std::mutex mEngineDataGuard;
 
   friend class AudioPlatform;

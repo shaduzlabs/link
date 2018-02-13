@@ -20,10 +20,10 @@
 #include "AudioEngine.hpp"
 
 // Make sure to define this before <cmath> is included for Windows
+#ifdef LINK_PLATFORM_WINDOWS
 #define _USE_MATH_DEFINES
+#endif
 #include <cmath>
-
-#define PPQN 1.0
 
 namespace ableton
 {
@@ -83,7 +83,7 @@ void AudioEngine::setQuantum(double quantum)
 
 void AudioEngine::setBufferSize(std::size_t size)
 {
-  mBuffer = std::vector<double>(size * 2, 0.);
+  mBuffer = std::vector<double>(size, 0.);
 }
 
 void AudioEngine::setSampleRate(double sampleRate)
@@ -119,18 +119,18 @@ void AudioEngine::renderMetronomeIntoBuffer(const Link::Timeline timeline,
 {
   using namespace std::chrono;
 
-  // 1 ms click pulse duration, 10ms reset pulse duration
-  static const auto clickDuration = duration<double>{0.001};
-  static const auto resetDuration = duration<double>{0.01};
+  // Metronome frequencies
+  static const double highTone = 1567.98;
+  static const double lowTone = 1108.73;
+  // 100ms click duration
+  static const auto clickDuration = duration<double>{0.1};
 
   // The number of microseconds that elapse between samples
   const auto microsPerSample = 1e6 / mSampleRate;
 
   for (std::size_t i = 0; i < numSamples; ++i)
   {
-    double clockAmplitude = 0.;
-    double resetAmplitude = 0.;
-
+    double amplitude = 0.;
     // Compute the host time for this sample and the last.
     const auto hostTime = beginHostTime + microseconds(llround(i * microsPerSample));
     const auto lastSampleHostTime = hostTime - microseconds(llround(microsPerSample));
@@ -142,36 +142,16 @@ void AudioEngine::renderMetronomeIntoBuffer(const Link::Timeline timeline,
       // If the phase wraps around between the last sample and the
       // current one with respect to a 1 beat quantum, then a click
       // should occur.
-      if (timeline.phaseAtTime(hostTime, 1.0 / (4 * PPQN))
-          < timeline.phaseAtTime(lastSampleHostTime, 1.0 / (4 * PPQN)))
+      if (timeline.phaseAtTime(hostTime, 1) < timeline.phaseAtTime(lastSampleHostTime, 1))
       {
         mTimeAtLastClick = hostTime;
       }
 
       const auto secondsAfterClick =
         duration_cast<duration<double>>(hostTime - mTimeAtLastClick);
-      const auto secondsAfterReset =
-        duration_cast<duration<double>>(hostTime - mTimeAtLastReset);
 
       // If we're within the click duration of the last beat, render
       // the click tone into this sample
-      auto phase = timeline.phaseAtTime(hostTime, quantum);
-      if (phase < mLastPhase)
-      {
-        // reset!
-        mTimeAtLastReset = hostTime;
-      }
-      mLastPhase = phase;
-
-      if (secondsAfterClick < clickDuration)
-      {
-        clockAmplitude = 1.0;
-      }
-      if (secondsAfterReset < resetDuration)
-      {
-        resetAmplitude = 1.0;
-      }
-
       if (secondsAfterClick < clickDuration)
       {
         // If the phase of the last beat with respect to the current
@@ -182,12 +162,11 @@ void AudioEngine::renderMetronomeIntoBuffer(const Link::Timeline timeline,
           floor(timeline.phaseAtTime(hostTime, quantum)) == 0 ? highTone : lowTone;
 
         // Simple cosine synth
-        clockAmplitude = cos(2 * M_PI * secondsAfterClick.count() * freq)
-                         * (1 - sin(5 * M_PI * secondsAfterClick.count()));
+        amplitude = cos(2 * M_PI * secondsAfterClick.count() * freq)
+                    * (1 - sin(5 * M_PI * secondsAfterClick.count()));
       }
     }
-    mBuffer[i * 2] = clockAmplitude;
-    mBuffer[(i * 2) + 1] = resetAmplitude;
+    mBuffer[i] = amplitude;
   }
 }
 
