@@ -80,7 +80,8 @@ struct Deserialize
 
 // Default size implementation. Works for primitive types.
 
-template <typename T>
+template <typename T,
+  typename std::enable_if<std::is_fundamental<T>::value>::type* = nullptr>
 std::uint32_t sizeInByteStream(T)
 {
   return sizeof(T);
@@ -235,6 +236,30 @@ struct Deserialize<int64_t>
   }
 };
 
+// bool
+inline std::uint32_t sizeInByteStream(bool)
+{
+  return sizeof(uint8_t);
+}
+
+template <typename It>
+It toNetworkByteStream(bool bl, It out)
+{
+  return toNetworkByteStream(static_cast<uint8_t>(bl), std::move(out));
+}
+
+template <>
+struct Deserialize<bool>
+{
+  template <typename It>
+  static std::pair<bool, It> fromNetworkByteStream(It begin, It end)
+  {
+    auto result =
+      Deserialize<uint8_t>::fromNetworkByteStream(std::move(begin), std::move(end));
+    return std::make_pair(result.first != 0, result.second);
+  }
+};
+
 // std::chrono::microseconds
 inline std::uint32_t sizeInByteStream(const std::chrono::microseconds micros)
 {
@@ -305,7 +330,7 @@ BytesIt deserializeContainer(BytesIt bytesBegin,
   return bytesBegin;
 }
 
-} // detail
+} // namespace detail
 
 // Need specific overloads for each container type, but use above
 // utilities for common implementation
@@ -341,12 +366,13 @@ struct Deserialize<std::array<T, Size>>
 template <typename T, typename Alloc>
 std::uint32_t sizeInByteStream(const std::vector<T, Alloc>& vec)
 {
-  return detail::containerSizeInByteStream(vec);
+  return sizeof(uint32_t) + detail::containerSizeInByteStream(vec);
 }
 
 template <typename T, typename Alloc, typename It>
 It toNetworkByteStream(const std::vector<T, Alloc>& vec, It out)
 {
+  out = toNetworkByteStream(static_cast<uint32_t>(vec.size()), out);
   return detail::containerToNetworkByteStream(vec, std::move(out));
 }
 
@@ -358,14 +384,39 @@ struct Deserialize<std::vector<T, Alloc>>
     It bytesBegin, It bytesEnd)
   {
     using namespace std;
+    auto result_size =
+      Deserialize<uint32_t>::fromNetworkByteStream(move(bytesBegin), bytesEnd);
     vector<T, Alloc> result;
-    // Use the number of bytes remaining in the stream as the upper
-    // bound on the number of elements that could be deserialized
-    // since we don't have a better heuristic.
-    auto resultIt = detail::deserializeContainer<T>(move(bytesBegin), move(bytesEnd),
-      back_inserter(result), static_cast<uint32_t>(distance(bytesBegin, bytesEnd)));
-
+    auto resultIt = detail::deserializeContainer<T>(
+      move(result_size.second), move(bytesEnd), back_inserter(result), result_size.first);
     return make_pair(move(result), move(resultIt));
+  }
+};
+
+// 2-tuple
+template <typename X, typename Y>
+std::uint32_t sizeInByteStream(const std::tuple<X, Y>& tup)
+{
+  return sizeInByteStream(std::get<0>(tup)) + sizeInByteStream(std::get<1>(tup));
+}
+
+template <typename X, typename Y, typename It>
+It toNetworkByteStream(const std::tuple<X, Y>& tup, It out)
+{
+  return toNetworkByteStream(
+    std::get<1>(tup), toNetworkByteStream(std::get<0>(tup), std::move(out)));
+}
+
+template <typename X, typename Y>
+struct Deserialize<std::tuple<X, Y>>
+{
+  template <typename It>
+  static std::pair<std::tuple<X, Y>, It> fromNetworkByteStream(It begin, It end)
+  {
+    using namespace std;
+    auto xres = Deserialize<X>::fromNetworkByteStream(begin, end);
+    auto yres = Deserialize<Y>::fromNetworkByteStream(xres.second, end);
+    return make_pair(make_tuple(move(xres.first), move(yres.first)), move(yres.second));
   }
 };
 

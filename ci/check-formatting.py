@@ -12,8 +12,12 @@ def parse_args():
 
     arg_parser.add_argument(
         '-c', '--clang-format',
-        default='clang-format-5.0',
+        default='clang-format-6.0',
         help='Path to clang-format executable')
+
+    arg_parser.add_argument(
+        '-f', '--fix', action='store_true',
+        help='Automatically fix all files with formatting errors')
 
     return arg_parser.parse_args(sys.argv[1:])
 
@@ -23,6 +27,16 @@ def parse_clang_xml(xml):
         if line.startswith('<replacement '):
             return False
     return True
+
+
+def fix_file(args, file_absolute_path):
+    logging.info('Fixing formatting errors in file: {}'.format(file_absolute_path))
+    clang_format_args = [args.clang_format, '-style=file', '-i', file_absolute_path]
+    try:
+        subprocess.check_call(clang_format_args)
+    except subprocess.CalledProcessError:
+        logging.error('Error running clang-format on {},'
+                      ' please run clang-format -i by hand'.format(file_absolute_path))
 
 
 def check_files_in_path(args, path):
@@ -39,31 +53,33 @@ def check_files_in_path(args, path):
 
                 try:
                     clang_format_output = subprocess.check_output(clang_format_args)
-                except:
+                except subprocess.CalledProcessError:
                     logging.error(
                         'Could not execute {}, try running this script with the'
                         '--clang-format option'.format(args.clang_format))
                     sys.exit(2)
 
                 if not parse_clang_xml(clang_format_output):
-                    logging.warn('{} has formatting errors'.format(file_absolute_path))
-                    errors_found = True
+                    if args.fix:
+                        fix_file(args, file_absolute_path)
+                    else:
+                        logging.warning(
+                            '{} has formatting errors'.format(file_absolute_path))
+                        errors_found = True
 
     return errors_found
 
 
 def check_formatting(args):
-    if not os.path.exists('.clang-format'):
-        logging.error('Script must be run from top-level project directory')
-        return 2
-
     errors_found = False
+    script_dir = os.path.dirname(os.path.realpath(__file__))
     for path in ['examples', 'include', 'src']:
-        if check_files_in_path(args, path):
+        subdir_abs_path = os.path.join(script_dir, path)
+        if check_files_in_path(args, subdir_abs_path):
             errors_found = True
 
     if errors_found:
-        logging.warn(
+        logging.warning(
             'Formatting errors found, please fix with clang-format -style=file -i')
     else:
         logging.debug('No formatting errors found!')

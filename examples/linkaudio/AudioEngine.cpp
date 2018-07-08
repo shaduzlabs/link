@@ -34,34 +34,34 @@ AudioEngine::AudioEngine(Link& link)
   : mLink(link)
   , mSampleRate(44100.)
   , mOutputLatency(0)
-  , mSharedEngineData({0., false, false, 4.})
+  , mSharedEngineData({0., false, false, 4., false})
   , mLockfreeEngineData(mSharedEngineData)
   , mTimeAtLastClick{}
+  , mIsPlaying(false)
 {
 }
 
 void AudioEngine::startPlaying()
 {
   std::lock_guard<std::mutex> lock(mEngineDataGuard);
-  mSharedEngineData.resetBeatTime = true;
-  mSharedEngineData.isPlaying = true;
+  mSharedEngineData.requestStart = true;
 }
 
 void AudioEngine::stopPlaying()
 {
   std::lock_guard<std::mutex> lock(mEngineDataGuard);
-  mSharedEngineData.isPlaying = false;
+  mSharedEngineData.requestStop = true;
 }
 
 bool AudioEngine::isPlaying() const
 {
-  return mSharedEngineData.isPlaying;
+  return mLink.captureAppSessionState().isPlaying();
 }
 
 double AudioEngine::beatTime() const
 {
-  const auto timeline = mLink.captureAppTimeline();
-  return timeline.beatAtTime(mLink.clock().micros(), mSharedEngineData.quantum);
+  const auto sessionState = mLink.captureAppSessionState();
+  return sessionState.beatAtTime(mLink.clock().micros(), mSharedEngineData.quantum);
 }
 
 void AudioEngine::setTempo(double tempo)
@@ -81,6 +81,16 @@ void AudioEngine::setQuantum(double quantum)
   mSharedEngineData.quantum = quantum;
 }
 
+bool AudioEngine::isStartStopSyncEnabled() const
+{
+  return mLink.isStartStopSyncEnabled();
+}
+
+void AudioEngine::setStartStopSyncEnabled(const bool enabled)
+{
+  mLink.enableStartStopSync(enabled);
+}
+
 void AudioEngine::setBufferSize(std::size_t size)
 {
   mBuffer = std::vector<double>(size, 0.);
@@ -98,21 +108,22 @@ AudioEngine::EngineData AudioEngine::pullEngineData()
   {
     engineData.requestedTempo = mSharedEngineData.requestedTempo;
     mSharedEngineData.requestedTempo = 0;
-    engineData.resetBeatTime = mSharedEngineData.resetBeatTime;
-    mSharedEngineData.resetBeatTime = false;
+    engineData.requestStart = mSharedEngineData.requestStart;
+    mSharedEngineData.requestStart = false;
+    engineData.requestStop = mSharedEngineData.requestStop;
+    mSharedEngineData.requestStop = false;
 
-    mLockfreeEngineData.isPlaying = mSharedEngineData.isPlaying;
     mLockfreeEngineData.quantum = mSharedEngineData.quantum;
+    mLockfreeEngineData.startStopSyncOn = mSharedEngineData.startStopSyncOn;
 
     mEngineDataGuard.unlock();
   }
-  engineData.isPlaying = mLockfreeEngineData.isPlaying;
   engineData.quantum = mLockfreeEngineData.quantum;
 
   return engineData;
 }
 
-void AudioEngine::renderMetronomeIntoBuffer(const Link::Timeline timeline,
+void AudioEngine::renderMetronomeIntoBuffer(const Link::SessionState sessionState,
   const double quantum,
   const std::chrono::microseconds beginHostTime,
   const std::size_t numSamples)
@@ -137,12 +148,13 @@ void AudioEngine::renderMetronomeIntoBuffer(const Link::Timeline timeline,
 
     // Only make sound for positive beat magnitudes. Negative beat
     // magnitudes are count-in beats.
-    if (timeline.beatAtTime(hostTime, quantum) >= 0.)
+    if (sessionState.beatAtTime(hostTime, quantum) >= 0.)
     {
       // If the phase wraps around between the last sample and the
       // current one with respect to a 1 beat quantum, then a click
       // should occur.
-      if (timeline.phaseAtTime(hostTime, 1) < timeline.phaseAtTime(lastSampleHostTime, 1))
+      if (sessionState.phaseAtTime(hostTime, 1)
+          < sessionState.phaseAtTime(lastSampleHostTime, 1))
       {
         mTimeAtLastClick = hostTime;
       }
@@ -159,7 +171,7 @@ void AudioEngine::renderMetronomeIntoBuffer(const Link::Timeline timeline,
         // want to use the high tone. For other beats within the
         // quantum, use the low tone.
         const auto freq =
-          floor(timeline.phaseAtTime(hostTime, quantum)) == 0 ? highTone : lowTone;
+          floor(sessionState.phaseAtTime(hostTime, quantum)) == 0 ? highTone : lowTone;
 
         // Simple cosine synth
         amplitude = cos(2 * M_PI * secondsAfterClick.count() * freq)
@@ -175,32 +187,46 @@ void AudioEngine::audioCallback(
 {
   const auto engineData = pullEngineData();
 
-  auto timeline = mLink.captureAudioTimeline();
+  auto sessionState = mLink.captureAudioSessionState();
 
   // Clear the buffer
   std::fill(mBuffer.begin(), mBuffer.end(), 0);
 
-  if (engineData.resetBeatTime)
+  if (engineData.requestStart)
   {
-    // Reset the timeline so that beat 0 lands at the beginning of
-    // this buffer and clear the flag.
-    timeline.requestBeatAtTime(0, hostTime, engineData.quantum);
+    sessionState.setIsPlaying(true, hostTime);
+  }
+
+  if (engineData.requestStop)
+  {
+    sessionState.setIsPlaying(false, hostTime);
+  }
+
+  if (!mIsPlaying && sessionState.isPlaying())
+  {
+    // Reset the timeline so that beat 0 corresponds to the time when transport starts
+    sessionState.requestBeatAtStartPlayingTime(0, engineData.quantum);
+    mIsPlaying = true;
+  }
+  else if (mIsPlaying && !sessionState.isPlaying())
+  {
+    mIsPlaying = false;
   }
 
   if (engineData.requestedTempo > 0)
   {
     // Set the newly requested tempo from the beginning of this buffer
-    timeline.setTempo(engineData.requestedTempo, hostTime);
+    sessionState.setTempo(engineData.requestedTempo, hostTime);
   }
 
   // Timeline modifications are complete, commit the results
-  mLink.commitAudioTimeline(timeline);
+  mLink.commitAudioSessionState(sessionState);
 
-  if (engineData.isPlaying)
+  if (mIsPlaying)
   {
     // As long as the engine is playing, generate metronome clicks in
     // the buffer at the appropriate beats.
-    renderMetronomeIntoBuffer(timeline, engineData.quantum, hostTime, numSamples);
+    renderMetronomeIntoBuffer(sessionState, engineData.quantum, hostTime, numSamples);
   }
 }
 

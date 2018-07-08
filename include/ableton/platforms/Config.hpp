@@ -59,8 +59,9 @@ using IoContext =
   platforms::asio::Context<platforms::posix::ScanIpIfAddrs, util::NullLog>;
 #endif
 
-using Controller = Controller<PeerCountCallback, TempoCallback, Clock, IoContext>;
+using Controller =
+  Controller<PeerCountCallback, TempoCallback, StartStopStateCallback, Clock, IoContext>;
 
-} // platform
-} // link
-} // ableton
+} // namespace platform
+} // namespace link
+} // namespace ableton

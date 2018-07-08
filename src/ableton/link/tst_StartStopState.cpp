@@ -1,4 +1,4 @@
-/* Copyright 2016, Ableton AG, Berlin. All rights reserved.
+/* Copyright 2017, Ableton AG, Berlin. All rights reserved.
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,27 +17,24 @@
  *  please contact <link-devs@ableton.com>.
  */
 
-#pragma once
-
-#include <algorithm>
+#include <ableton/link/StartStopState.hpp>
+#include <ableton/test/CatchWrapper.hpp>
 
 namespace ableton
 {
-namespace platforms
-{
-namespace asio
+namespace link
 {
 
-// Utility for making v4 or v6 ip addresses from raw bytes in network byte-order
-template <typename AsioAddrType>
-AsioAddrType makeAddress(const char* pAddr)
+TEST_CASE("StartStopState | RoundtripByteStreamEncoding", "[StartStopState]")
 {
-  using namespace std;
-  typename AsioAddrType::bytes_type bytes;
-  copy(pAddr, pAddr + bytes.size(), begin(bytes));
-  return AsioAddrType{bytes};
+  const auto originalState =
+    StartStopState{true, Beats{1234.}, std::chrono::microseconds{5678}};
+  std::vector<std::uint8_t> bytes(sizeInByteStream(originalState));
+  const auto serializedEndIter = toNetworkByteStream(originalState, begin(bytes));
+  const auto deserialized =
+    StartStopState::fromNetworkByteStream(begin(bytes), serializedEndIter);
+  CHECK(originalState == deserialized.first);
 }
 
-} // namespace asio
-} // namespace platforms
+} // namespace link
 } // namespace ableton
