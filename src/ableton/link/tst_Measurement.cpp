@@ -19,13 +19,11 @@
 
 #include <ableton/discovery/Payload.hpp>
 #include <ableton/discovery/test/Socket.hpp>
-#include <ableton/link/GhostXForm.hpp>
 #include <ableton/link/Measurement.hpp>
 #include <ableton/link/SessionId.hpp>
 #include <ableton/link/v1/Messages.hpp>
-#include <ableton/platforms/asio/AsioWrapper.hpp>
 #include <ableton/test/CatchWrapper.hpp>
-#include <ableton/util/Log.hpp>
+#include <ableton/util/test/IoService.hpp>
 #include <array>
 
 namespace ableton
@@ -35,8 +33,6 @@ namespace link
 namespace
 {
 
-using Socket = discovery::test::Socket;
-
 struct MockClock
 {
   std::chrono::microseconds micros() const
@@ -45,21 +41,48 @@ struct MockClock
   }
 };
 
+struct MockIoContext
+{
+  template <std::size_t BufferSize>
+  using Socket = discovery::test::Socket;
+
+  template <std::size_t BufferSize>
+  Socket<BufferSize> openUnicastSocket(const asio::ip::address_v4&)
+  {
+    return Socket<BufferSize>(mIo);
+  }
+
+  using Timer = util::test::Timer;
+
+  Timer makeTimer()
+  {
+    return {};
+  }
+
+  using Log = util::NullLog;
+
+  Log log() const
+  {
+    return {};
+  }
+
+  ableton::util::test::IoService mIo;
+};
+
 struct TFixture
 {
   TFixture()
-    : mAddress(asio::ip::address_v4::from_string("127.0.0.1"))
-    , mMeasurement(mStateQuery(),
+    : mMeasurement(mStateQuery(),
         [](std::vector<std::pair<double, double>>) {},
-        mAddress,
+        {},
         MockClock{},
-        util::injectVal(util::NullLog{}))
+        MockIoContext{})
   {
   }
 
-  Socket& socket()
+  discovery::test::Socket socket()
   {
-    return *(mMeasurement.mpImpl->mpSocket);
+    return mMeasurement.mpImpl->mSocket;
   }
 
   struct StateQuery
@@ -78,24 +101,13 @@ struct TFixture
     PeerState mState;
   };
 
-  struct GhostXFormQuery
-  {
-    GhostXForm operator()() const
-    {
-      return {1.0, std::chrono::microseconds{0}};
-    }
-  };
-
   StateQuery mStateQuery;
-  GhostXFormQuery mGhostXFormQuery;
-  asio::ip::address_v4 mAddress;
-  Measurement<util::test::IoService, MockClock, discovery::test::Socket, util::NullLog>
-    mMeasurement;
+  Measurement<MockClock, MockIoContext> mMeasurement;
 };
 
 } // anonymous namespace
 
-TEST_CASE("Measurement | SendPingsOnConstruction", "[Measurement]")
+TEST_CASE("PeerMeasurement | SendPingsOnConstruction", "[PeerMeasurement]")
 {
   TFixture fixture;
   CHECK(1 == fixture.socket().sentMessages.size());
@@ -116,7 +128,7 @@ TEST_CASE("Measurement | SendPingsOnConstruction", "[Measurement]")
   CHECK(std::chrono::microseconds{0} == gt);
 }
 
-TEST_CASE("Measurement | ReceiveInitPong", "[Measurement]")
+TEST_CASE("PeerMeasurement | ReceiveInitPong", "[PeerMeasurement]")
 {
   using Micros = std::chrono::microseconds;
   TFixture fixture;
@@ -138,7 +150,7 @@ TEST_CASE("Measurement | ReceiveInitPong", "[Measurement]")
   CHECK(0 == fixture.mMeasurement.mpImpl->mData.size());
 }
 
-TEST_CASE("Measurement | ReceivePong", "[Measurement]")
+TEST_CASE("PeerMeasurement | ReceivePong", "[PeerMeasurement]")
 {
   using Micros = std::chrono::microseconds;
   TFixture fixture;

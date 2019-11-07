@@ -57,7 +57,6 @@ set(link_discovery_HEADERS
   ${link_discovery_DIR}/PeerGateway.hpp
   ${link_discovery_DIR}/PeerGateways.hpp
   ${link_discovery_DIR}/Service.hpp
-  ${link_discovery_DIR}/Socket.hpp
   ${link_discovery_DIR}/UdpMessenger.hpp
   ${link_discovery_DIR}/v1/Messages.hpp
   PARENT_SCOPE
@@ -73,7 +72,6 @@ set(link_discovery_HEADERS
 set(link_platform_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ableton/platforms)
 set(link_platform_HEADERS
   ${link_platform_DIR}/Config.hpp
-  ${link_platform_DIR}/asio/AsioService.hpp
   ${link_platform_DIR}/asio/AsioTimer.hpp
   ${link_platform_DIR}/asio/AsioWrapper.hpp
   ${link_platform_DIR}/asio/Context.hpp
